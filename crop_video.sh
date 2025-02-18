@@ -57,8 +57,8 @@ fi
 
 echo "height=$height, width=$width"
 
-upper_window=144 # height of the upper part of the firefox window
-lower_window=56 # height of the lower part of the firefox window
+upper_window=96 # height of the upper part of the firefox window
+lower_window=54 # height of the lower part of the firefox window
 
 #out_w is the width of the output rectangle
 out_w=$width
@@ -74,4 +74,4 @@ x=0
 y=$upper_window
 
 
-ffmpeg -y -ss $startup_duration -i "$input" -filter:v "crop=$out_w:$out_h:$x:$y" $DURATION_OPTION "$output"
+ffmpeg -y -ss $startup_duration -i "$input" -filter:v "crop=$out_w:$out_h:$x:$y" $DURATION_OPTION -preset veryslow -pix_fmt yuv420p -strict -2 -acodec aac -vcodec libx264 "$output"

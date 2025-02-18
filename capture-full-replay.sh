@@ -29,7 +29,7 @@ EOF
 }
 
 
-startup_duration=5 # duration of firefox startup (that will be cut out of the video)
+startup_duration=11 # duration of firefox startup (that will be cut out of the video)
 stop_duration=0
 main_screen_only=n
 crop=y
@@ -171,7 +171,7 @@ function capture() {
 	exit 1
     fi
 
-    container_name=grid$$
+    container_name=grid #$$
 
     # Startup Selenium server
     #  -e VIDEO_FILE_EXTENSION="mkv" \
@@ -179,10 +179,10 @@ function capture() {
     docker run --network="$network_name" --rm -d --name=$container_name -P -p 24444:24444 \
 	   --shm-size=2g -e VNC_PASSWORD=hola \
 	   -e VIDEO=true -e AUDIO=true \
-	   -e SCREEN_WIDTH=1080 -e SCREEN_HEIGHT=720 \
+	   -e SCREEN_WIDTH=1980 -e SCREEN_HEIGHT=1200 \
 	   -e FFMPEG_DRAW_MOUSE=0 \
 	   -e FFMPEG_FRAME_RATE=24 \
-	   -e FFMPEG_CODEC_ARGS="-vcodec libx264 -preset ultrafast -pix_fmt yuv420p -strict -2 -acodec aac" \
+	   -e FFMPEG_CODEC_ARGS="-preset veryslow -pix_fmt yuv420p -strict -2 -acodec aac -vcodec libx264" \
 	   elgalu/selenium
 
     if [ $? -ne 0 ]; then
