@@ -21,7 +21,7 @@ OPTIONS:
    -l last_duration                 Remove the last last_duration seconds of the video (relatively to stop_duration)
    -e stop_duration                 Cut the video after stop_duration (from the start of the input video)
    -m   	       	            Only show the main screen (ie. remove the webcam)
-   -c 				    Don't crop the output video
+   -c 				    Don't crop the output video (result video container will be mkv - not mp4)
    -o output_file		    Select the output file
    -S 				    Save all the downloaded videos
    -i input_file		    Download all the videos specified in input_file
@@ -31,8 +31,8 @@ EOF
 
 startup_duration=10
 
-start_duration=0
-last_duration=0
+start_duration=8
+last_duration=4
 stop_duration=0
 main_screen_only=n
 crop=y
@@ -142,7 +142,11 @@ function capture() {
     fi
 
     if [ -z "$output_file" ]; then
-	output_file=$video_id.mp4
+	if [ "$crop" -eq "y" ]; then 
+	    output_file=$video_id.mp4
+	else
+	    output_file=$video_id.mkv
+	fi
     fi
 
     if [ "$docker" = y ]; then
@@ -193,12 +197,12 @@ function capture() {
     container_name=grid #$$
 
     # Startup Selenium server
-    #  -e VIDEO_FILE_EXTENSION="mkv" \
 	#  -p 5920:25900 : we don't need to connect via VNC
     docker run --network="$network_name" --rm -d --name=$container_name -P -p 24444:24444 \
 	   --shm-size=2g -e VNC_PASSWORD=hola \
 	   -e VIDEO=true -e AUDIO=true \
 	   -e SCREEN_WIDTH=1980 -e SCREEN_HEIGHT=1200 \
+	   -e VIDEO_FILE_EXTENSION="mkv" \
 	   -e FFMPEG_DRAW_MOUSE=0 \
 	   -e FFMPEG_FRAME_RATE=24 \
 	   -e FFMPEG_CODEC_ARGS="-preset veryslow -pix_fmt yuv420p -strict -2 -acodec aac -vcodec libx264" \
@@ -248,7 +252,7 @@ function capture() {
     docker stop $container_name
     docker kill $container_name
 
-    captured_video=$(ls -1 $output_dir/*.mp4)
+    captured_video=$(ls -1 $output_dir/*.mkv)
 
     if [ "$crop" = "y" ]; then
 	if [ "$main_screen_only" = y ]; then
