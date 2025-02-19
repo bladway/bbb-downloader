@@ -17,19 +17,22 @@ usage: $0 [options] URL
 
 OPTIONS:
    -?                               Show this message
-   -s startup_duration              Remove the first startup_duration seconds of the video
+   -s start_duration                Remove the first start_duration seconds of the video
+   -l last_duration                 Remove the last last_duration seconds of the video (relatively to stop_duration)
    -e stop_duration                 Cut the video after stop_duration (from the start of the input video)
    -m   	       	            Only show the main screen (ie. remove the webcam)
    -c 				    Don't crop the output video
    -o output_file		    Select the output file
    -S 				    Save all the downloaded videos
    -i input_file		    Download all the videos specified in input_file
-   -v                               Enable verbose mode 
+   -v                               Enable verbose mode
 EOF
 }
 
+startup_duration=10
 
-startup_duration=11 # duration of firefox startup (that will be cut out of the video)
+start_duration=0
+last_duration=0
 stop_duration=0
 main_screen_only=n
 crop=y
@@ -39,14 +42,18 @@ input_file=""
 verbose=n
 docker=n
 docker_option=""
-while getopts 'ds:e:mco:Si:v' OPTION; do
+while getopts 'ds:l:e:mco:Si:v' OPTION; do
     case $OPTION in
 	d)
 	    docker=y
 	    ;;
 	s)
-	    startup_duration=$OPTARG
-	    docker_option="$docker_option -s $startup_duration"
+	    start_duration=$OPTARG
+	    docker_option="$docker_option -s $start_duration"
+	    ;;
+	l)
+	    last_duration=$OPTARG
+	    docker_option="$docker_option -l $last_duration"
 	    ;;
 	e)
 	    stop_duration=$OPTARG
@@ -159,16 +166,28 @@ function capture() {
 		exit 1
 	    fi
 	fi
-
+	seconds=$(expr $seconds + $startup_duration)
     else
 	seconds=$stop_duration
     fi
 
     # Add some delay for selenium to complete
     seconds=$(expr $seconds + 5)
+
     if [ -z "$seconds" ]; then
 	echo "Failed to detect the duration of the presentation" >&2
 	exit 1
+    fi
+
+    # Remove last_duration seconds in the end of recording
+    #seconds=$(expr $seconds - $last_duration)
+    #if [ "$seconds" -le 0 ]; then
+    #	echo "Can't cut more than presentation length"
+    #	exit 1
+    #fi
+
+    if [ "$last_duration" -ne 0 ]; then
+	stop_duration=$(expr $seconds - $last_duration)
     fi
 
     container_name=grid #$$
@@ -237,7 +256,7 @@ function capture() {
 	else
 	    OPTIONS=""
 	fi
-	bash $scriptdir/crop_video.sh -s "$startup_duration" -e "$stop_duration" $OPTIONS $captured_video $output_file
+	bash $scriptdir/crop_video.sh -s "$start_duration" -e "$stop_duration" $OPTIONS $captured_video $output_file
     else
 	mv $captured_video $output_file
     fi
@@ -249,7 +268,7 @@ function capture() {
 
     echo
     echo "DONE. Your video is ready in $output_file"
-    
+
 }
 
 if [ -z "$input_file" ]; then

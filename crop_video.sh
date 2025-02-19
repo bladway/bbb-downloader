@@ -7,20 +7,20 @@ usage: $0 [options] input_file output_file
 
 OPTIONS:
    -?                               Show this message
-   -s startup_duration              Remove the first startup_duration seconds of the video
+   -s start_duration                Remove the first startup_duration seconds of the video
    -e stop_duration                 Cut the video after stop_duration (from the start of the input video)
    -m   	       	            Only show the main screen (ie. remove the webcam)
 EOF
 }
 
-startup_duration=11 # duration of firefox startup (that will be cut out of the video)
+start_duration=0
 stop_duration=0
 main_screen_only=n
 
 while getopts 's:e:m' OPTION; do
     case $OPTION in
 	s)
-	    startup_duration=$OPTARG
+	    start_duration=$OPTARG
 	    ;;
 	e)
 	    stop_duration=$OPTARG
@@ -50,7 +50,7 @@ width=$(echo $video_size |awk -Fx '{print $1}')
 
 
 if [ "$stop_duration" -gt 0 ]; then
-    duration=$(echo "$stop_duration - $startup_duration"|bc)
+    duration=$(echo "$stop_duration - $start_duration"|bc)
     DURATION_OPTION="-t $duration"
 fi
 
@@ -74,4 +74,4 @@ x=0
 y=$upper_window
 
 
-ffmpeg -y -ss $startup_duration -i "$input" -filter:v "crop=$out_w:$out_h:$x:$y" $DURATION_OPTION -preset veryslow -pix_fmt yuv420p -strict -2 -acodec aac -vcodec libx264 "$output"
+ffmpeg -y -ss $start_duration -i "$input" -filter:v "crop=$out_w:$out_h:$x:$y" $DURATION_OPTION -preset veryslow -pix_fmt yuv420p -strict -2 -acodec aac -vcodec libx264 "$output"
