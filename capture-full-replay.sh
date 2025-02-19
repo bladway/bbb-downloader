@@ -201,7 +201,7 @@ function capture() {
     docker run --network="$network_name" --rm -d --name=$container_name -P -p 24444:24444 \
 	   --shm-size=2g -e VNC_PASSWORD=hola \
 	   -e VIDEO=true -e AUDIO=true \
-	   -e SCREEN_WIDTH=1980 -e SCREEN_HEIGHT=1200 \
+	   -e SCREEN_WIDTH=1680 -e SCREEN_HEIGHT=1031 \
 	   -e VIDEO_FILE_EXTENSION="mkv" \
 	   -e FFMPEG_DRAW_MOUSE=0 \
 	   -e FFMPEG_FRAME_RATE=24 \
