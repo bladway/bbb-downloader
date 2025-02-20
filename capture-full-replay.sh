@@ -156,19 +156,15 @@ function capture() {
 
     echo "Downloading $url, and saving it as '$output_file'."
     # Extract duration from associate metadata file
-    #seconds=$(python3 bbb.py duration "$url")
+    # seconds=$(python3 bbb.py duration "$url")
 
     python3 $scriptdir/download_bbb_data.py -V "$url" "$video_id"
     if [ $stop_duration -eq 0 ]; then
-	seconds=$(ffprobe -i $video_id/Videos/webcams.webm -show_entries format=duration -v quiet -of csv="p=0")
-	seconds=$( echo "($seconds+0.5)/1" | bc 2>/dev/null)
+	seconds=$(python3 $scriptdir/bbb.py duration "$url")
 	if [ -z "$seconds" ]; then
-	    seconds=$(python3 $scriptdir/bbb.py duration "$url")
-	    if [ -z "$seconds" ]; then
-		echo "Failed to detect the duration of the presentation" >&2
-		# bbb.py failed because of a wrong url
-		exit 1
-	    fi
+	     echo "Failed to detect the duration of the presentation" >&2
+	     # bbb.py failed because of a wrong url
+	     exit 1
 	fi
 	seconds=$(expr $seconds + $startup_duration)
     else
@@ -182,13 +178,6 @@ function capture() {
 	echo "Failed to detect the duration of the presentation" >&2
 	exit 1
     fi
-
-    # Remove last_duration seconds in the end of recording
-    #seconds=$(expr $seconds - $last_duration)
-    #if [ "$seconds" -le 0 ]; then
-    #	echo "Can't cut more than presentation length"
-    #	exit 1
-    #fi
 
     if [ "$last_duration" -ne 0 ]; then
 	stop_duration=$(expr $seconds - $last_duration)
@@ -205,8 +194,9 @@ function capture() {
 	   -e VIDEO_FILE_EXTENSION="mkv" \
 	   -e FFMPEG_DRAW_MOUSE=0 \
 	   -e FFMPEG_FRAME_RATE=24 \
-	   -e FFMPEG_CODEC_ARGS="-preset veryslow -pix_fmt yuv420p -strict -2 -acodec aac -vcodec libx264" \
+	   -e FFMPEG_CODEC_ARGS="" \
 	   elgalu/selenium
+
 
     if [ $? -ne 0 ]; then
 	echo "docker run failed!" >&2
@@ -216,32 +206,38 @@ function capture() {
     container_ip=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $container_name)
     docker exec $container_name wait_all_done 30s
 
-    echo 
+    echo
     echo "Please wait for $seconds seconds, while we capture the playback..."
     echo
 
     if [ -d /opt/bbb-downloader/node_modules ]; then
 	export NODE_PATH="$NODE_PATH:/opt/bbb-downloader/node_modules"
     fi
+
     # Run selenium to capture video
-    node $scriptdir/selenium-play-bbb-recording.js "$url" $seconds $container_ip:$bound_port &
+    node $scriptdir/selenium-play-bbb-recording.js "$url" $container_ip:$bound_port &
 
     # First wait for making sure the playback is started
-    sleep 10
+    sleep $startup_duration
 
     # Now wait for the duration of the recording, for the capture to happen
 
     # Instead of waiting without any feedback to the user with a simple
     # "sleep", we use the progress bar script.
-    # Use plain "sleep" if on MacOSX or other cases where progress_bar won't do.
-    #sleep $(echo "$seconds - 10" | bc)
-    progress_duration=$(echo "$seconds - 10" | bc)
 
+    #echo
+    #echo "already slept startup +$startup_duration $(date +"%T.%N")"
+
+    progress_duration=$(echo "$seconds - $startup_duration" | bc)
     set +x # disable verbosity to avoid flooding the logs
-    progress_bar $progress_duration
+    #progress_bar $progress_duration
+    sleep $progress_duration
     if [ $verbose = y ]; then
 	set -x
     fi
+
+    #echo
+    #echo "after progress bar duration $(date +"%T.%N")"
 
     # Save the captured video
     docker exec $container_name stop-video

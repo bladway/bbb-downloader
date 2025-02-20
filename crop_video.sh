@@ -74,4 +74,5 @@ x=0
 y=$upper_window
 
 
-ffmpeg -y -ss $start_duration -i "$input" -filter:v "crop=$out_w:$out_h:$x:$y" $DURATION_OPTION -crf 23 -preset veryslow -pix_fmt yuv420p -strict -2 -acodec aac -vcodec libx264 "$output"
+ffmpeg -y -i "$input" -itsoffset 00:00:01.500 -i "$input" -map 0:0 -map 1:1 -ss $start_duration -filter:v "crop=$out_w:$out_h:$x:$y" $DURATION_OPTION -crf 23 -preset veryslow -pix_fmt yuv420p -strict -2 -acodec aac -vcodec libx264 "$output"
+

@@ -17,7 +17,7 @@ var webdriver = require('selenium-webdriver'),
 var driver = new webdriver.Builder()
 /*    .forBrowser('chrome') */
     .forBrowser('firefox')
-    .usingServer('http://'+ myArgs[2] + '/wd/hub')
+    .usingServer('http://'+ myArgs[1] + '/wd/hub')
     .build();
 
 /* load webpage given its URL */
@@ -41,8 +41,3 @@ try {
     // This may crash if the play button is not found. TODO: crash with a pretty message
     driver.findElement(By.className('vjs-play-control vjs-button')).click();
 }
-
-/* Stop after the required number of seconds */
-driver.sleep(1000 * myArgs[1]);
-
-driver.quit();
