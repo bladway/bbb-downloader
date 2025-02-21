@@ -28,11 +28,10 @@ OPTIONS:
    -v                               Enable verbose mode
 EOF
 }
-
-startup_duration=10
-
+sure_delay=20
+edges_delay=20
 start_duration=8
-last_duration=2
+last_duration=0
 stop_duration=0
 main_screen_only=n
 crop=y
@@ -166,21 +165,16 @@ function capture() {
 	     # bbb.py failed because of a wrong url
 	     exit 1
 	fi
-	seconds=$(expr $seconds + $startup_duration)
+        seconds=$(expr $seconds + $edges_delay)
     else
 	seconds=$stop_duration
     fi
 
-    # Add some delay for selenium to complete
-    seconds=$(expr $seconds + 5)
+    stop_duration=$(expr $seconds - $last_duration)
 
     if [ -z "$seconds" ]; then
 	echo "Failed to detect the duration of the presentation" >&2
 	exit 1
-    fi
-
-    if [ "$last_duration" -ne 0 ]; then
-	stop_duration=$(expr $seconds - $last_duration)
     fi
 
     container_name=grid #$$
@@ -217,18 +211,14 @@ function capture() {
     # Run selenium to capture video
     node $scriptdir/selenium-play-bbb-recording.js "$url" $container_ip:$bound_port &
 
-    # First wait for making sure the playback is started
-    sleep $startup_duration
-
     # Now wait for the duration of the recording, for the capture to happen
 
     # Instead of waiting without any feedback to the user with a simple
     # "sleep", we use the progress bar script.
 
-    progress_duration=$(echo "$seconds - $startup_duration" | bc)
     set +x # disable verbosity to avoid flooding the logs
-    #progress_bar $progress_duration
-    sleep $progress_duration
+    progress_bar $seconds
+    sleep $sure_delay # Make sure all the material recorded
     if [ $verbose = y ]; then
 	set -x
     fi
