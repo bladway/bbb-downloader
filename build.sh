@@ -7,7 +7,6 @@ sudo add-apt-repository --yes ppa:graphics-drivers/ppa
 sudo apt update -y
 user=$(whoami)
 sudo usermod -aG docker $user
-exec su -l $user
 export PATH="$PATH:/home/$user/.local/bin"
 npm install
 pip3 install -r python-requirements.txt

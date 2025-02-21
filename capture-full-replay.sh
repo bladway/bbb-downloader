@@ -32,7 +32,7 @@ EOF
 startup_duration=10
 
 start_duration=8
-last_duration=4
+last_duration=2
 stop_duration=0
 main_screen_only=n
 crop=y
@@ -225,9 +225,6 @@ function capture() {
     # Instead of waiting without any feedback to the user with a simple
     # "sleep", we use the progress bar script.
 
-    #echo
-    #echo "already slept startup +$startup_duration $(date +"%T.%N")"
-
     progress_duration=$(echo "$seconds - $startup_duration" | bc)
     set +x # disable verbosity to avoid flooding the logs
     #progress_bar $progress_duration
@@ -235,9 +232,6 @@ function capture() {
     if [ $verbose = y ]; then
 	set -x
     fi
-
-    #echo
-    #echo "after progress bar duration $(date +"%T.%N")"
 
     # Save the captured video
     docker exec $container_name stop-video
