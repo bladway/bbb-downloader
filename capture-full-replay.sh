@@ -165,7 +165,7 @@ function capture() {
     if [ -z "$seconds" ]; then
         seconds=$(ffprobe -i $video_id/Videos/webcams.mp4 -show_entries format=duration -v quiet -of csv="p=0")
         seconds=$( echo "($seconds+0.5)/1" | bc 2>/dev/null)
-        if [ -z "$seconds"]; then
+        if [ -z "$seconds" ]; then
             seconds=$(python3 $scriptdir/bbb.py duration "$url")
         fi
     fi
