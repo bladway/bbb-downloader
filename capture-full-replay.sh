@@ -18,8 +18,8 @@ usage: $0 [options] URL
 OPTIONS:
    -?                               Show this message
    -s start_duration                Remove the first start_duration seconds of the video
-   -l last_duration                 Remove the last last_duration seconds of the video (relatively to stop_duration)
    -e stop_duration                 Cut the video after stop_duration (from the start of the input video)
+   -l last_duration                 Remove the last last_duration seconds of the video (relatively to stop_duration)
    -m   	       	            Only show the main screen (ie. remove the webcam)
    -c 				    Don't crop the output video (result video container will be mkv - not mp4)
    -o output_file		    Select the output file
@@ -28,11 +28,9 @@ OPTIONS:
    -v                               Enable verbose mode
 EOF
 }
-sure_delay=20
-edges_delay=20
-start_duration=8
-last_duration=0
+start_duration=0
 stop_duration=0
+last_duration=0
 main_screen_only=n
 crop=y
 output_file=""
@@ -41,6 +39,8 @@ input_file=""
 verbose=n
 docker=n
 docker_option=""
+
+end_video_delay=10
 while getopts 'ds:l:e:mco:Si:v' OPTION; do
     case $OPTION in
 	d)
@@ -50,14 +50,14 @@ while getopts 'ds:l:e:mco:Si:v' OPTION; do
 	    start_duration=$OPTARG
 	    docker_option="$docker_option -s $start_duration"
 	    ;;
-	l)
-	    last_duration=$OPTARG
-	    docker_option="$docker_option -l $last_duration"
-	    ;;
 	e)
 	    stop_duration=$OPTARG
 	    docker_option="$docker_option -e $stop_duration"
 	    ;;
+        l)
+            last_duration=$OPTARG
+            docker_option="$docker_option -l $last_duration"
+            ;;
 	m)
 	    main_screen_only=y
 	    docker_option="$docker_option -m"
@@ -141,7 +141,7 @@ function capture() {
     fi
 
     if [ -z "$output_file" ]; then
-	if [ "$crop" -eq "y" ]; then 
+	if [ "$crop" -eq "y" ]; then
 	    output_file=$video_id.mp4
 	else
 	    output_file=$video_id.mkv
@@ -158,19 +158,18 @@ function capture() {
     # seconds=$(python3 bbb.py duration "$url")
 
     python3 $scriptdir/download_bbb_data.py -V "$url" "$video_id"
-    if [ $stop_duration -eq 0 ]; then
-	seconds=$(python3 $scriptdir/bbb.py duration "$url")
-	if [ -z "$seconds" ]; then
-	     echo "Failed to detect the duration of the presentation" >&2
-	     # bbb.py failed because of a wrong url
-	     exit 1
-	fi
-        seconds=$(expr $seconds + $edges_delay)
-    else
-	seconds=$stop_duration
+
+
+    seconds=$(ffprobe -i $video_id/Videos/webcams.webm -show_entries format=duration -v quiet -of csv="p=0")
+    seconds=$( echo "($seconds+0.5)/1" | bc 2>/dev/null)
+    if [ -z "$seconds" ]; then
+        seconds=$(ffprobe -i $video_id/Videos/webcams.mp4 -show_entries format=duration -v quiet -of csv="p=0")
+        seconds=$( echo "($seconds+0.5)/1" | bc 2>/dev/null)
+        if [ -z "$seconds"]; then
+            seconds=$(python3 $scriptdir/bbb.py duration "$url")
+        fi
     fi
 
-    stop_duration=$(expr $seconds - $last_duration)
 
     if [ -z "$seconds" ]; then
 	echo "Failed to detect the duration of the presentation" >&2
@@ -181,6 +180,7 @@ function capture() {
 
     # Startup Selenium server
 	#  -p 5920:25900 : we don't need to connect via VNC
+
     docker run --network="$network_name" --rm -d --name=$container_name -P -p 24444:24444 \
 	   --shm-size=2g -e VNC_PASSWORD=hola \
 	   -e VIDEO=true -e AUDIO=true \
@@ -188,37 +188,43 @@ function capture() {
 	   -e VIDEO_FILE_EXTENSION="mkv" \
 	   -e FFMPEG_DRAW_MOUSE=0 \
 	   -e FFMPEG_FRAME_RATE=24 \
-	   -e FFMPEG_CODEC_ARGS="" \
 	   elgalu/selenium
-
 
     if [ $? -ne 0 ]; then
 	echo "docker run failed!" >&2
 	exit 1
     fi
+
     bound_port=$(docker inspect --format='{{(index (index .NetworkSettings.Ports "24444/tcp") 0).HostPort}}' $container_name)
     container_ip=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $container_name)
-    docker exec $container_name wait_all_done 30s
 
-    echo
-    echo "Please wait for $seconds seconds, while we capture the playback..."
-    echo
+    docker exec $container_name wait_all_done 30s
 
     if [ -d /opt/bbb-downloader/node_modules ]; then
 	export NODE_PATH="$NODE_PATH:/opt/bbb-downloader/node_modules"
     fi
 
-    # Run selenium to capture video
-    node $scriptdir/selenium-play-bbb-recording.js "$url" $container_ip:$bound_port &
+    video_start_time=$(date +%s)
+
+    # Run selenium to start video
+    node $scriptdir/selenium-play-bbb-recording.js "$url" $container_ip:$bound_port
+
+    playback_start_time=$(date +%s)
 
     # Now wait for the duration of the recording, for the capture to happen
 
     # Instead of waiting without any feedback to the user with a simple
     # "sleep", we use the progress bar script.
 
+    capture_delay=$(expr $seconds + $end_video_delay)
+
+    echo
+    echo "Please wait for $capture_delay seconds, while we capture the playback..."
+    echo
+
     set +x # disable verbosity to avoid flooding the logs
-    progress_bar $seconds
-    sleep $sure_delay # Make sure all the material recorded
+    progress_bar $capture_delay
+
     if [ $verbose = y ]; then
 	set -x
     fi
@@ -233,6 +239,20 @@ function capture() {
     docker kill $container_name
 
     captured_video=$(ls -1 $output_dir/*.mkv)
+
+    if [ $start_duration -eq 0 ]; then
+        start_duration=$(expr $playback_start_time - $video_start_time - 2)
+    fi
+
+    if [ $stop_duration -eq 0 ]; then
+        stop_duration=$(expr $playback_start_time - $video_start_time - 2 + $seconds + $end_video_delay - $last_duration)
+    fi
+
+    echo
+    echo "seconds=$seconds"
+    echo "start_duration=$start_duration"
+    echo "stop_duration=$stop_duration"
+    echo "capture_delay=$capture_delay"
 
     if [ "$crop" = "y" ]; then
 	if [ "$main_screen_only" = y ]; then

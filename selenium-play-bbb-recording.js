@@ -2,7 +2,6 @@
  * Drives Selenium to record the replay
  * args :
  *  - URL
- *  - seconds to record
  *  - port to connect to
  */
 
