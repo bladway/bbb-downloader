@@ -10,14 +10,16 @@ OPTIONS:
    -s start_duration                Remove the first startup_duration seconds of the video
    -e stop_duration                 Cut the video after stop_duration (from the start of the input video)
    -m   	       	            Only show the main screen (ie. remove the webcam)
+   -a audio_encoder                 Use specified audio encoder
 EOF
 }
 
 start_duration=0
 stop_duration=0
 main_screen_only=n
+audio_encoder=aac
 
-while getopts 's:e:m' OPTION; do
+while getopts 's:e:ma:' OPTION; do
     case $OPTION in
 	s)
 	    start_duration=$OPTARG
@@ -28,9 +30,13 @@ while getopts 's:e:m' OPTION; do
 	m)
 	    main_screen_only=y
 	    ;;
-	  ?)	usage
-	exit 2
-	;;
+        a)
+            audio_encoder=$OPTARG
+            ;;
+	?)
+            usage
+	    exit 2
+	    ;;
     esac
 done
 
@@ -73,4 +79,4 @@ out_h=$(echo "$height - $upper_window - $lower_window"|bc)
 x=0
 y=$upper_window
 
-ffmpeg -y -i "$input" -itsoffset 00:00:01.500 -i "$input" -map 0:0 -map 1:1 -filter:v "crop=$out_w:$out_h:$x:$y" -ss $start_duration $DURATION_OPTION -crf 23 -preset veryslow -pix_fmt yuv420p -strict -2 -acodec aac -vcodec libx264 "$output"
+ffmpeg -y -i "$input" -itsoffset 00:00:01.500 -i "$input" -map 0:0 -map 1:1 -fps_mode vfr -filter:v "crop=$out_w:$out_h:$x:$y,mpdecimate=max=5" -c:v libx264 -crf 23 -preset veryslow -pix_fmt nv12 -c:a $audio_encoder -vbr 5 -ss $start_duration $DURATION_OPTION "$output"

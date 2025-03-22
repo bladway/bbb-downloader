@@ -26,6 +26,7 @@ OPTIONS:
    -S 				    Save all the downloaded videos
    -i input_file		    Download all the videos specified in input_file
    -v                               Enable verbose mode
+   -a audio_encoder                 Use specified audio encoder
 EOF
 }
 start_duration=0
@@ -38,10 +39,11 @@ save=n
 input_file=""
 verbose=n
 docker=n
+audio_encoder=aac
 docker_option=""
 
 end_video_delay=10
-while getopts 'ds:l:e:mco:Si:v' OPTION; do
+while getopts 'ds:l:e:mco:Si:va:' OPTION; do
     case $OPTION in
 	d)
 	    docker=y
@@ -80,6 +82,10 @@ while getopts 'ds:l:e:mco:Si:v' OPTION; do
 	    verbose=y
 	    docker_option="$docker_option -v"
 	    ;;
+        a)
+            audio_encoder=$OPTARG
+            docker_option="$docker_option -a"
+            ;;
 	?)
 	usage
 	exit 2
@@ -187,7 +193,9 @@ function capture() {
 	   -e SCREEN_WIDTH=1680 -e SCREEN_HEIGHT=1031 \
 	   -e VIDEO_FILE_EXTENSION="mkv" \
 	   -e FFMPEG_DRAW_MOUSE=0 \
-	   -e FFMPEG_FRAME_RATE=24 \
+	   -e FFMPEG_FRAME_RATE=60 \
+           -e FFMPEG_CODEC_ARGS="-c:v copy -c:a copy" \
+           -e FFMPEG_CODEC_VA_ARGS="-c:v libx264 -crf 0 -qp 0 -c:a copy -preset ultrafast -g 180" \
 	   elgalu/selenium
 
     if [ $? -ne 0 ]; then
@@ -260,7 +268,7 @@ function capture() {
 	else
 	    OPTIONS=""
 	fi
-	bash $scriptdir/crop_video.sh -s "$start_duration" -e "$stop_duration" $OPTIONS $captured_video $output_file
+	bash $scriptdir/crop_video.sh -s "$start_duration" -e "$stop_duration" -a "$audio_encoder" $OPTIONS $captured_video $output_file
     else
 	mv $captured_video $output_file
     fi
