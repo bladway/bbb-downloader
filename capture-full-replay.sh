@@ -148,9 +148,9 @@ function capture() {
 
     if [ -z "$output_file" ]; then
 	if [ "$crop" -eq "y" ]; then
-	    output_file=$video_id.mp4
+	    output_file="$video_id.mp4"
 	else
-	    output_file=$video_id.mkv
+	    output_file="$video_id.mkv"
 	fi
     fi
 
@@ -163,16 +163,16 @@ function capture() {
     # Extract duration from associate metadata file
     # seconds=$(python3 bbb.py duration "$url")
 
-    python3 $scriptdir/download_bbb_data.py -V "$url" "$video_id"
+    python3 "$scriptdir/download_bbb_data.py" -V "$url" "$video_id"
 
 
-    seconds=$(ffprobe -i $video_id/Videos/webcams.webm -show_entries format=duration -v quiet -of csv="p=0")
+    seconds=$(ffprobe -i "$video_id/Videos/webcams.webm" -show_entries format=duration -v quiet -of csv="p=0")
     seconds=$( echo "($seconds+0.5)/1" | bc 2>/dev/null)
     if [ -z "$seconds" ]; then
-        seconds=$(ffprobe -i $video_id/Videos/webcams.mp4 -show_entries format=duration -v quiet -of csv="p=0")
+        seconds=$(ffprobe -i "$video_id/Videos/webcams.mp4" -show_entries format=duration -v quiet -of csv="p=0")
         seconds=$( echo "($seconds+0.5)/1" | bc 2>/dev/null)
         if [ -z "$seconds" ]; then
-            seconds=$(python3 $scriptdir/bbb.py duration "$url")
+            seconds=$(python3 "$scriptdir/bbb.py" duration "$url")
         fi
     fi
 
@@ -195,7 +195,7 @@ function capture() {
 	   -e FFMPEG_DRAW_MOUSE=0 \
 	   -e FFMPEG_FRAME_RATE=60 \
            -e FFMPEG_CODEC_ARGS="-c:v copy -c:a copy" \
-           -e FFMPEG_CODEC_VA_ARGS="-c:v libx264 -crf 0 -qp 0 -c:a copy -preset ultrafast -g 180" \
+           -e FFMPEG_CODEC_VA_ARGS="-c:v libx264 -crf 0 -qp 0 -c:a copy -preset ultrafast -g 60" \
 	   elgalu/selenium
 
     if [ $? -ne 0 ]; then
@@ -204,9 +204,9 @@ function capture() {
     fi
 
     bound_port=$(docker inspect --format='{{(index (index .NetworkSettings.Ports "24444/tcp") 0).HostPort}}' $container_name)
-    container_ip=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $container_name)
+    container_ip=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$container_name")
 
-    docker exec $container_name wait_all_done 30s
+    docker exec "$container_name" wait_all_done 30s
 
     if [ -d /opt/bbb-downloader/node_modules ]; then
 	export NODE_PATH="$NODE_PATH:/opt/bbb-downloader/node_modules"
@@ -215,7 +215,7 @@ function capture() {
     video_start_time=$(date +%s)
 
     # Run selenium to start video
-    node $scriptdir/selenium-play-bbb-recording.js "$url" $container_ip:$bound_port
+    node "$scriptdir/selenium-play-bbb-recording.js" "$url" $container_ip:$bound_port
 
     playback_start_time=$(date +%s)
 
@@ -238,15 +238,15 @@ function capture() {
     fi
 
     # Save the captured video
-    docker exec $container_name stop-video
+    docker exec "$container_name" stop-video
 
     output_dir=$(mktemp -d)
 
-    docker cp $container_name:/videos/. $output_dir/
-    docker stop $container_name
-    docker kill $container_name
+    docker cp "$container_name:/videos/." "$output_dir/"
+    docker stop "$container_name"
+    docker kill "$container_name"
 
-    captured_video=$(ls -1 $output_dir/*.mkv)
+    captured_video=$(ls -1 "$output_dir"/*.mkv)
 
     if [ $start_duration -eq 0 ]; then
         start_duration=$(expr $playback_start_time - $video_start_time - 2)
@@ -268,14 +268,14 @@ function capture() {
 	else
 	    OPTIONS=""
 	fi
-	bash $scriptdir/crop_video.sh -s "$start_duration" -e "$stop_duration" -a "$audio_encoder" $OPTIONS $captured_video $output_file
+	bash "$scriptdir/crop_video.sh" -s "$start_duration" -e "$stop_duration" -a "$audio_encoder" $OPTIONS "$captured_video" "$output_file"
     else
-	mv $captured_video $output_file
+	mv "$captured_video" "$output_file"
     fi
-    rm -fr $output_dir
+    rm -fr "$output_dir"
 
     if [ "$save" = n ]; then
-	rm -r $video_id
+	rm -r "$video_id"
     fi
 
     echo
@@ -292,22 +292,22 @@ if [ -z "$input_file" ]; then
 
     url=$1
     if [ -n "$url" ]; then
-	video_id=$(python3 $scriptdir/bbb.py id "$url")
+	video_id=$(python3 "$scriptdir/bbb.py" id "$url")
 	capture "$url" "$output_file" "$video_id" 2>&1 |tee "capture_${video_id}.log"
     fi
 else
-    if ! [ -r $input_file ]; then
+    if ! [ -r "$input_file" ]; then
 	echo "Error: cannot open  file $input_file" >&2
 	exit 2
     fi
 
     while read url output_file ; do
 	if [ -n "$url" ]; then
-	    output_file=$(echo $output_file| tr -d '\r')
-	    video_id=$(python3 $scriptdir/bbb.py id "$url")
+	    output_file=$(echo "$output_file" | tr -d '\r')
+	    video_id=$(python3 "$scriptdir/bbb.py" id "$url")
 	    capture "$url" "$output_file" "$video_id" 2>&1 |tee "capture_${video_id}.log"
 	fi
-    done < $input_file
+    done < "$input_file"
     exit 1
 fi
 
