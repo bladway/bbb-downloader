@@ -193,9 +193,9 @@ function capture() {
 	   -e SCREEN_WIDTH=1680 -e SCREEN_HEIGHT=1031 \
 	   -e VIDEO_FILE_EXTENSION="mkv" \
 	   -e FFMPEG_DRAW_MOUSE=0 \
-	   -e FFMPEG_FRAME_RATE=60 \
-           -e FFMPEG_CODEC_ARGS="-c:v copy -c:a copy" \
-           -e FFMPEG_CODEC_VA_ARGS="-c:v libx264 -crf 0 -qp 0 -c:a copy -preset ultrafast -g 60" \
+	   -e FFMPEG_FRAME_RATE=24 \
+           -e FFMPEG_CODEC_ARGS="-map 0 -c:v copy -c:a copy -copyts" \
+           -e FFMPEG_CODEC_VA_ARGS="-map 0 -c:v libx264 -preset ultrafast -crf 16 -r 24 -keyint_min 24 -g 384 -c:a flac" \
 	   elgalu/selenium
 
     if [ $? -ne 0 ]; then
@@ -232,6 +232,7 @@ function capture() {
 
     set +x # disable verbosity to avoid flooding the logs
     progress_bar $capture_delay
+    #sleep $capture_delay
 
     if [ $verbose = y ]; then
 	set -x

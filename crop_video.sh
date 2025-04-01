@@ -1,3 +1,4 @@
+
 #!/bin/bash
 
 usage()
@@ -79,4 +80,4 @@ out_h=$(echo "$height - $upper_window - $lower_window"|bc)
 x=0
 y=$upper_window
 
-ffmpeg -y -i "$input" -itsoffset 00:00:01.500 -i "$input" -map 0:0 -map 1:1 -fps_mode vfr -filter:v "crop=$out_w:$out_h:$x:$y,mpdecimate=max=3" -c:v libx264 -crf 23 -preset veryslow -pix_fmt nv12 -c:a "$audio_encoder" -vbr 5 -ss $start_duration $DURATION_OPTION "$output"
+ffmpeg -y -r 24 -i "$input" -itsoffset 00:00:01.500 -r 24 -i "$input" -map 0:0 -map 1:1 -fps_mode cfr -filter:v "crop=$out_w:$out_h:$x:$y" -c:v libx264 -preset veryslow -crf 23 -r 24 -keyint_min 24 -g 384 -pix_fmt nv12 -c:a "$audio_encoder" -vbr 5 -ss $start_duration $DURATION_OPTION "$output"
