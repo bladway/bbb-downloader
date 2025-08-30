@@ -27,6 +27,7 @@ OPTIONS:
    -i input_file		    Download all the videos specified in input_file
    -v                               Enable verbose mode
    -a audio_encoder                 Use specified audio encoder
+   -p audio_profile                 Use specified audio profile
 EOF
 }
 start_duration=0
@@ -40,10 +41,11 @@ input_file=""
 verbose=n
 docker=n
 audio_encoder=aac
+audio_profile=aac_low
 docker_option=""
 
-end_video_delay=10
-while getopts 'ds:l:e:mco:Si:va:' OPTION; do
+end_video_delay=20
+while getopts 'ds:l:e:mco:Si:va:p:' OPTION; do
     case $OPTION in
 	d)
 	    docker=y
@@ -85,6 +87,10 @@ while getopts 'ds:l:e:mco:Si:va:' OPTION; do
         a)
             audio_encoder=$OPTARG
             docker_option="$docker_option -a"
+            ;;
+        p)
+            audio_profile=$OPTARG
+            docker_option="$docker_option -p"
             ;;
 	?)
 	usage
@@ -184,6 +190,8 @@ function capture() {
 
     container_name=grid #$$
 
+    docker container stop grid
+
     # Startup Selenium server
 	#  -p 5920:25900 : we don't need to connect via VNC
 
@@ -194,8 +202,8 @@ function capture() {
 	   -e VIDEO_FILE_EXTENSION="mkv" \
 	   -e FFMPEG_DRAW_MOUSE=0 \
 	   -e FFMPEG_FRAME_RATE=24 \
-           -e FFMPEG_CODEC_ARGS="-map 0 -c:v copy -c:a copy -copyts" \
-           -e FFMPEG_CODEC_VA_ARGS="-map 0 -c:v libx264 -preset ultrafast -crf 16 -r 24 -keyint_min 24 -g 384 -c:a flac" \
+           -e FFMPEG_CODEC_ARGS="-map 0 -c copy -copyts" \
+           -e FFMPEG_CODEC_VA_ARGS="-c:v libx264 -preset ultrafast -crf 16 -r 24 -keyint_min 24 -g 384 -c:a flac" \
 	   elgalu/selenium
 
     if [ $? -ne 0 ]; then
@@ -250,11 +258,11 @@ function capture() {
     captured_video=$(ls -1 "$output_dir"/*.mkv)
 
     if [ $start_duration -eq 0 ]; then
-        start_duration=$(expr $playback_start_time - $video_start_time - 2)
+        start_duration=$(expr $playback_start_time - $video_start_time - 3)
     fi
 
     if [ $stop_duration -eq 0 ]; then
-        stop_duration=$(expr $playback_start_time - $video_start_time - 2 + $seconds + $end_video_delay - $last_duration)
+        stop_duration=$(expr $playback_start_time - $video_start_time + $seconds + $end_video_delay - $last_duration)
     fi
 
     echo
@@ -269,7 +277,7 @@ function capture() {
 	else
 	    OPTIONS=""
 	fi
-	bash "$scriptdir/crop_video.sh" -s "$start_duration" -e "$stop_duration" -a "$audio_encoder" $OPTIONS "$captured_video" "$output_file"
+	bash "$scriptdir/crop_video.sh" -s "$start_duration" -e "$stop_duration" -a "$audio_encoder" -p "$audio_profile" $OPTIONS "$captured_video" "$output_file"
     else
 	mv "$captured_video" "$output_file"
     fi

@@ -12,6 +12,7 @@ OPTIONS:
    -e stop_duration                 Cut the video after stop_duration (from the start of the input video)
    -m   	       	            Only show the main screen (ie. remove the webcam)
    -a audio_encoder                 Use specified audio encoder
+   -p audio_profile                 Use specified audio profile
 EOF
 }
 
@@ -19,8 +20,9 @@ start_duration=0
 stop_duration=0
 main_screen_only=n
 audio_encoder=aac
+audio_profile=aac_low
 
-while getopts 's:e:ma:' OPTION; do
+while getopts 's:e:ma:p:' OPTION; do
     case $OPTION in
 	s)
 	    start_duration=$OPTARG
@@ -33,6 +35,9 @@ while getopts 's:e:ma:' OPTION; do
 	    ;;
         a)
             audio_encoder=$OPTARG
+            ;;
+	p)
+            audio_profile=$OPTARG
             ;;
 	?)
             usage
@@ -80,4 +85,4 @@ out_h=$(echo "$height - $upper_window - $lower_window"|bc)
 x=0
 y=$upper_window
 
-ffmpeg -y -r 24 -i "$input" -itsoffset 00:00:01.500 -r 24 -i "$input" -map 0:0 -map 1:1 -fps_mode cfr -filter:v "crop=$out_w:$out_h:$x:$y" -c:v libx264 -preset veryslow -crf 23 -r 24 -keyint_min 24 -g 384 -pix_fmt nv12 -c:a "$audio_encoder" -vbr 5 -ss $start_duration $DURATION_OPTION "$output"
+ffmpeg -y -r 24 -i "$input" -map 0:v:0 -map 0:a:0 -fps_mode cfr -filter:v "crop=$out_w:$out_h:$x:$y" -c:v libx264 -preset veryslow -crf 23 -r 24 -keyint_min 24 -g 384 -pix_fmt nv12 -c:a "$audio_encoder" -profile:a "$audio_profile" -vbr 5 -ss $start_duration $DURATION_OPTION "$output"
