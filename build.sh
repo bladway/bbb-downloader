@@ -1,3 +1,4 @@
+# ubuntu
 sudo apt-get update -y
 sudo apt-get upgrade -y
 sudo apt-get install -y vdpauinfo
@@ -19,3 +20,20 @@ deactivate
 docker pull elgalu/selenium:latest
 docker network create bbb
 
+# archlinux
+sudo pacman -Syu --noconfirm --needed vdpauinfo
+sudo pacman -Syu --noconfirm --needed bc npm
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -r python-requirements.txt
+sudo systemctl disable --now systemd-timesyncd.service
+npm install
+docker pull elgalu/selenium:latest
+docker network create bbb
+
+# build new image
+docker build --pull=false \
+    --build-arg FIREFOX_VERSION=158.0.1 \
+    --build-arg GECKODRIVER_VERSION=0.37.1 \
+    -t elgalu/selenium:bbb-firefox158 \
+    .

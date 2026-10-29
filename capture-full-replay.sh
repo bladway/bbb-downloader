@@ -188,15 +188,16 @@ function capture() {
 	exit 1
     fi
 
-    container_name=grid #$$
-
-    docker container stop grid
-
+    container_name=main #$$
+    docker network create "$network_name"
+    docker stop "$container_name"
+    docker kill "$container_name"
+    sleep 10
     # Startup Selenium server
 	#  -p 5920:25900 : we don't need to connect via VNC
 
-    docker run --network="$network_name" --rm -d --name=$container_name -P -p 24444:24444 \
-	   --shm-size=2g -e VNC_PASSWORD=hola \
+    docker run --network="$network_name" --rm -d --name=$container_name -P -p 24444:24444 -p 5900:25900 -p 6080:26080 \
+	   --shm-size=2g -e VNC_PASSWORD=hola -e NOVNC=true \
 	   -e VIDEO=true -e AUDIO=true \
 	   -e SCREEN_WIDTH=1680 -e SCREEN_HEIGHT=1031 \
 	   -e VIDEO_FILE_EXTENSION="mkv" \
@@ -204,7 +205,7 @@ function capture() {
 	   -e FFMPEG_FRAME_RATE=24 \
            -e FFMPEG_CODEC_ARGS="-map 0 -c copy -copyts" \
            -e FFMPEG_CODEC_VA_ARGS="-c:v libx264 -preset ultrafast -crf 16 -r 24 -keyint_min 24 -g 384 -c:a flac" \
-	   elgalu/selenium
+	   elgalu/selenium:bbb-firefox158
 
     if [ $? -ne 0 ]; then
 	echo "docker run failed!" >&2
